@@ -24,7 +24,6 @@ EOF
 URL=$1
 ROOT="${URL%/*}/"
 AGENT="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0"
-HEADER="Accept: text/html"
 DIR="/tmp/$(cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32)"
 
 if [[ -z $URL ]]; then
@@ -50,10 +49,10 @@ done
 wget --quiet \
      --no-parent \
      --recursive \
+     --no-clobber \
+     --html-extension \
      --directory-prefix=$DIR \
      --user-agent="$AGENT" \
-     --header="$HEADER" \
-     --follow-tags=a \
      $URL
 
 # extract URLs from anchor and image tags
