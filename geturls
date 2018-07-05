@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+usage()
+{
+cat << EOF
+usage: geturls [URL]
+
+Extact all URLs from anchor and image tags within a web page and its children.
+
+Relative paths are prefixed with the root of the URL provided, i.e. full URLs
+are provided in all cases.
+
+The URL provided must point to a file, so that this script can recursively
+obtain all the linked URLs.
+
+(c) Javier Arias, Open Book Publishers, July 2018
+Use of this software is governed by the terms of the MIT -- see LICENSE
+
+OPTIONS:
+   -h, --help      Show this message
+EOF
+}
+
+URL=$1
+ROOT="${URL%/*}/"
+AGENT="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0"
+HEADER="Accept: text/html"
+DIR="/tmp/$(cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32)"
+
+if [[ -z $URL ]]; then
+    usage
+    exit
+fi
+
+while getopts "h" OPTION
+do
+    case $OPTION in
+        h)
+            usage
+            exit 1
+            ;;
+        ?)
+            usage
+            exit
+            ;;
+    esac
+done
+
+# download site
+wget --quiet \
+     --no-parent \
+     --recursive \
+     --directory-prefix=$DIR \
+     --user-agent="$AGENT" \
+     --header="$HEADER" \
+     --follow-tags=a \
+     $URL
+
+# extract URLs from anchor and image tags
+grep --no-filename \
+     --only-matching \
+     --regexp='<img .*src=.*>' \
+     --regexp='<a .*href=.*>' \
+     --directories recurse $DIR \
+    | sed --expression='s/<a /\n<a /g' \
+          --expression='s/<img /\n<img /g' \
+    | sed --expression='s/<a .*href=['"'"'"]//' \
+          --expression='s/<img .*src=['"'"'"]//' \
+          --expression='s/["'"'"'].*$//' \
+          --expression='s/#.*//' \
+          --expression='s/&.*//' \
+          --expression='/^<a id=$/ d' \
+          --expression='/^$/ d' \
+    | awk '/^http/ { print } $0 !~ /^http/ { printf "%s%s\n", "'$ROOT'", $0 }' \
+    | sort \
+    | uniq
+
+# get rid of temporary directory
+rm -rf $DIR
