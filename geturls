@@ -71,6 +71,7 @@ grep --no-filename \
           --expression='/^<a id=$/ d' \
           --expression='/^$/ d' \
     | awk '/^http/ { print } $0 !~ /^http/ { printf "%s%s\n", "'$ROOT'", $0 }' \
+    | sed --expression='s/ /\%20/' \
     | sort \
     | uniq
 
